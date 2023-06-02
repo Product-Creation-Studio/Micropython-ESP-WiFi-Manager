@@ -10,7 +10,7 @@ In case no network has been configured or no connection could be established
 to any of the configured networks within the timeout of each 5 seconds an
 AccessPoint is created.
 
-A simple Picoweb webserver is hosting the webpages to connect to new networks,
+A simple Microdot webserver is hosting the webpages to connect to new networks,
 to remove already configured networks from the list of connections to
 establish and to get the latest available networks as JSON
 """
@@ -61,7 +61,14 @@ class WiFiManager(object):
         self._config_file = 'wifi-secure.json'
 
         self.app = Microdot()
-        init_templates(template_dir='lib/templates')
+
+        # Check for existence of lib/templates
+        if PathHelper.exists(path='lib/templates/'):
+            init_templates(template_dir='lib/templates')
+        else:
+            self.logger.warning('Missing directory lib/templates; using pre-compiled')
+            from utemplate import compiled
+            init_templates(template_dir='templates', loader=compiled.Loader)
 
         self.wh = WifiHelper()
 
