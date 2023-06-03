@@ -31,6 +31,7 @@ from microdot.microdot_asyncio import Microdot, redirect, Request, Response, \
     send_file
 from microdot import URLPattern
 from microdot.microdot_utemplate import render_template, init_templates
+from utemplate import compiled
 
 # custom packages
 from be_helpers.generic_helper import GenericHelper
@@ -68,8 +69,7 @@ class WiFiManager(object):
             init_templates(template_dir='lib/templates')
         else:
             self.logger.warning('Missing directory lib/templates; using pre-compiled')
-            from utemplate import compiled
-            init_templates(template_dir='templates', loader=compiled.Loader)
+            init_templates(template_dir='templates', loader_class=compiled.Loader)
 
         self.wh = WifiHelper()
 
