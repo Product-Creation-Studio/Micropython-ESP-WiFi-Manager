@@ -933,7 +933,7 @@ class WiFiManager(object):
         elif filename.startswith('/'):
             fname = filename[1:]
         # Now, split off the next file component
-        dirname, fname = fname.split('/')
+        dirname, fname = fname.split('/', 1)
         # Then, try to find the file in the static module
         try:
             f = pkg_resources.resource_stream(dirname, fname)
