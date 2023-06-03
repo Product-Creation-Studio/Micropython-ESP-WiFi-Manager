@@ -23,6 +23,7 @@ import _thread
 import time
 import ubinascii
 import ucryptolib
+import pkg_resources
 
 # pip installed packages
 # https://github.com/miguelgrinberg/microdot
@@ -891,27 +892,16 @@ class WiFiManager(object):
         ext = path.split('.')[-1]
         complete_file_path = '/lib/' + 'static/' + ext + '/' + path
 
-        response_header['Content-Type'] = Response.types_map.get(
-            ext, 'application/octet-stream')
-
         if 'gzip' in req.headers.get('Accept-Encoding', ''):
             self.logger.debug('gzip accepted for {} file'.format(ext))
             complete_file_path += '.gz'
             response_header['Content-Encoding'] = 'gzip'
 
-        self.logger.debug('Send file {}'.format(complete_file_path))
-        self.logger.debug('Response header {}'.format(response_header))
-
-        f = open(complete_file_path, 'rb')
-
-        return f, 200, response_header
+        return self._send_static_file(filename=complete_file_path, status_code=200, response_header=response_header)
 
     # @app.route('/favicon.ico')
     async def serve_favicon(self, req: Request) -> None:
-        # return None, 204, {'Content-Type': 'application/json; charset=UTF-8'}
-        return send_file(filename='/lib/static/favicon.ico',
-                         status_code=200,
-                         content_type='image/x-icon')
+        return self._send_static_file(filename='/lib/static/favicon.ico', status_code=200, content_type='image/x-icon')
 
     # @app.route('/shutdown')
     async def shutdown(self, req: Request) -> None:
@@ -919,6 +909,42 @@ class WiFiManager(object):
         req.app.shutdown()
 
         return 'The server is shutting down...'
+
+    async def _send_static_file(self, filename:str, status_code:int, content_type:str = None, response_header:dict|None = {}) -> None:
+        # if no content type is specified, try to guess it from the filename's extension
+        if not 'Content-Type' in response_header:
+            if content_type is None:
+                ext = filename.split('.')[-1]
+                content_type = Response.types_map.get(ext, 'application/octet-stream')
+            response_header['Content-Type'] = content_type
+
+        # if the named file exists, return it directly.
+        if PathHelper.exists(path=filename):
+            f = open(filename, 'rb')
+            self.logger.debug('Send file {}'.format(filename))
+            self.logger.debug('Response header {}'.format(response_header))
+            return Response(body=f, status_code=status_code, headers=response_header)
+
+        # if the named file does not exist, try to find it in the pre-compiled static module
+        # using pkg_resources
+        # First, strip off the leading /lib/ from the filename if there is one
+        if filename.startswith('/lib/'):
+            fname = filename[5:]
+        elif filename.startswith('/'):
+            fname = filename[1:]
+        # Now, split off the next file component
+        dirname, fname = fname.split('/')
+        # Then, try to find the file in the static module
+        try:
+            f = pkg_resources.resource_stream(dirname, fname)
+            self.logger.debug('Send compiled resource {}/{}'.format(dirname, fname))
+            self.logger.debug('Response header {}'.format(response_header))
+            return Response(body=f, status_code=status_code, headers=response_header)
+        except:
+            # if the file is not found, return a 404 error
+            errmsg = 'File not found: {}'.format(filename)
+            self.logger.error(errmsg)
+            return Response(body={'error': errmsg}, status_code=404)
 
     async def not_found(self, req: Request) -> None:
         return {'error': 'resource not found'}, 404
