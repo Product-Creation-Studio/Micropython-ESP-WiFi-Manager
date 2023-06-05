@@ -46,7 +46,22 @@
     <div class="list-group list-group-checkable">
       <form action="save_wifi_config" method="post" id="save_wifi_config_form">
         <div name="wifi_network" id="wifi_network">
-          {{ content }}
+        {% if len(content) %}
+          {% for net in content %}
+            <input class="list-group-item-check" type="radio" name="bssid" id="{{net['bssid']}}" value="{{net['bssid']}}" 
+              onclick="remember_selected_element(this)" {{net['state']}}>
+            <label class="list-group-item py-3" for="{{net['bssid']}}">
+              {{net['ssid']}}
+              <span class="d-block small opacity-50">
+                Signal quality {{net['quality']}}&#37;, BSSID {{net['bssid']}}
+              </span>
+            </label>
+          {% endfor %}
+        {% else %}
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        {% endif %}
         </div>
         <input type="text" class="w-100" name="ssid" id="ssid" placeholder="Custom Network Name">
         <br>

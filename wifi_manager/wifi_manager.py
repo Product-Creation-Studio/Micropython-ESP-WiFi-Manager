@@ -42,8 +42,6 @@ from be_helpers.wifi_helper import WifiHelper
 # typing not natively supported on micropython
 from be_helpers.typing import List, Tuple, Union, Callable
 
-from uasyncio import Stream
-
 
 class WiFiManager(object):
     """docstring for WiFiManager"""
@@ -644,32 +642,15 @@ class WiFiManager(object):
         :returns:   Sub content of WiFi selection page
         :rtype:     str
         """
-        content = ""
-        if len(available_nets):
-            for ele in available_nets:
-                selected = ''
-                if ele['bssid'].decode('ascii') == selected_bssid:
-                    selected = "checked"
-                content += """
-                <input class="list-group-item-check" type="radio" name="bssid" id="{bssid}" value="{bssid}" onclick="remember_selected_element(this)" {state}>
-                <label class="list-group-item py-3" for="{bssid}">
-                  {ssid}
-                  <span class="d-block small opacity-50">
-                    Signal quality {quality}&#37;, BSSID {bssid}
-                  </span>
-                </label>
-                """.format(bssid=ele['bssid'],  # noqa: E501
-                           state=selected,
-                           ssid=ele['ssid'],
-                           quality=ele['quality'])
-        else:
-            # as long as no networks are available show a spinner
-            content = """
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-            """
-
+        content = []
+        for ele in available_nets:
+            selected = ''
+            if ele['bssid'].decode('ascii') == selected_bssid:
+                selected = "checked"
+            content.append(dict(bssid=ele['bssid'], 
+                                state=selected,
+                                ssid=ele['ssid'],
+                                quality=ele['quality']))
         return content
 
     def _save_wifi_config(self, form_data: dict) -> None:
