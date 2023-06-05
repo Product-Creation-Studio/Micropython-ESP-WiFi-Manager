@@ -42,6 +42,8 @@ from be_helpers.wifi_helper import WifiHelper
 # typing not natively supported on micropython
 from be_helpers.typing import List, Tuple, Union, Callable
 
+from uasyncio import Stream
+
 
 class WiFiManager(object):
     """docstring for WiFiManager"""

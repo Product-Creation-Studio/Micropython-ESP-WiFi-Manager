@@ -26,15 +26,15 @@
         ],
         [
             "microdot/microdot.py",
-            "github:product-creation-studio/Micropython-ESP-WiFi-Manager/microdot/microdot.py"
+            "github:miguelgrinberg/microdot/src/microdot.py"
         ],
         [
             "microdot/microdot_asyncio.py",
-            "github:product-creation-studio/Micropython-ESP-WiFi-Manager/microdot/microdot_asyncio.py"
+            "github:miguelgrinberg/microdot/src/microdot_asyncio.py"
         ],
         [
             "microdot/microdot_utemplate.py",
-            "github:product-creation-studio/Micropython-ESP-WiFi-Manager/microdot/microdot_utemplate.py"
+            "github:miguelgrinberg/microdot/src/microdot_utemplate.py"
         ],
         [
             "utemplate/compiled.py",
