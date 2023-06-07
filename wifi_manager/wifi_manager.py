@@ -34,12 +34,11 @@ from microdot.microdot_asyncio import Microdot, redirect, Request, Response, \
     send_file
 from microdot import URLPattern
 from microdot.microdot_utemplate import render_template, init_templates
-from utemplate import compiled
+from utemplate import compiled, recompile 
 
 # custom packages
 from be_helpers.generic_helper import GenericHelper
 from be_helpers.message import Message
-from be_helpers.path_helper import PathHelper
 from be_helpers.wifi_helper import WifiHelper
 
 # typing not natively supported on micropython
@@ -52,6 +51,13 @@ def set_global_exception():
         sys.exit()
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
+
+def path_exists(path):
+    try:
+        _ = os.stat(path)
+        return True
+    except OSError:
+        return False
 
 
 class WiFiManager(object):
@@ -79,8 +85,8 @@ class WiFiManager(object):
         Response.types_map['ico'] = 'image/x-icon'
 
         # Check for existence of lib/templates
-        if PathHelper.exists(path='lib/templates/'):
-            init_templates(template_dir='lib/templates')
+        if path_exists('/lib/templates/'):
+            init_templates(template_dir='lib/templates', loader_class=recompile.Loader)
         else:
             self.logger.warning('Missing directory lib/templates; using pre-compiled')
             init_templates(template_dir='templates', loader_class=compiled.Loader)
@@ -184,7 +190,7 @@ class WiFiManager(object):
         result = False
 
         # check wifi config file existance
-        if PathHelper.exists(path=self._config_file):
+        if path_exists(self._config_file):
             self.logger.debug('Encrypted wifi config file exists')
             loaded_cfg = self._load_wifi_config_data(path=self._config_file,
                                                      encrypted=True)
@@ -388,7 +394,7 @@ class WiFiManager(object):
         :type       encrypted:  bool, optional
         """
         # in case the file already exists, extend its data content
-        if PathHelper.exists(path=path):
+        if path_exists(path):
             existing_data = self._load_wifi_config_data(path=path,
                                                         encrypted=encrypted)
             self.logger.debug('Existing WiFi config data: {}'.
@@ -827,7 +833,7 @@ class WiFiManager(object):
             selected_bssid=selected_bssid
         )
 
-        return content
+        return render_template(template='render_nets.tpl', content=content)
 
     # @app.route('/configure')
     async def wifi_configs(self, req: Request) -> None:
@@ -872,14 +878,6 @@ class WiFiManager(object):
         # redirect to '/configure'
         return redirect('/configure')
 
-    @staticmethod
-    def path_exists(path):
-        try:
-            _ = os.stat(path)
-            return True
-        except OSError:
-            return False
-
     def _response_for_file(self, filename: str, allow_gz: bool = False) -> Response:
         """
         Return the Response object for a static file.
@@ -909,10 +907,10 @@ class WiFiManager(object):
         static_path = f"/lib/static/{ext}/{filename}"
         if allow_gz:
             zipped = static_path + '.gz'
-            if self.path_exists(zipped):
+            if path_exists(zipped):
                 headers['Content-Encoding'] = 'gzip'
                 return Response(body = open(zipped, 'rb'), status_code=200, headers=headers)
-        elif self.path_exists(static_path):
+        elif path_exists(static_path):
             return Response(body = open(static_path, 'rb'), status_code=200, headers=headers)
         try:
             f = pkg_resources.resource_stream('static', f"{ext}/{filename}")
