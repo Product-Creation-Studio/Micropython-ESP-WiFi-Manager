@@ -24,6 +24,9 @@ import time
 import ubinascii
 import ucryptolib
 import pkg_resources
+import aiorepl
+import uasyncio as asyncio
+import os
 
 # pip installed packages
 # https://github.com/miguelgrinberg/microdot
@@ -41,6 +44,14 @@ from be_helpers.wifi_helper import WifiHelper
 
 # typing not natively supported on micropython
 from be_helpers.typing import List, Tuple, Union, Callable
+
+def set_global_exception():
+    def handle_exception(loop, context):
+        import sys
+        sys.print_exception(context["exception"])
+        sys.exit()
+    loop = asyncio.get_event_loop()
+    loop.set_exception_handler(handle_exception)
 
 
 class WiFiManager(object):
@@ -61,8 +72,11 @@ class WiFiManager(object):
         self.logger = logger
         self.logger.disabled = quiet
         self._config_file = 'wifi-secure.json'
+        self.logger.debug('Config file: {}'.format(self._config_file))
 
         self.app = Microdot()
+
+        Response.types_map['ico'] = 'image/x-icon'
 
         # Check for existence of lib/templates
         if PathHelper.exists(path='lib/templates/'):
@@ -647,7 +661,7 @@ class WiFiManager(object):
             selected = ''
             if ele['bssid'].decode('ascii') == selected_bssid:
                 selected = "checked"
-            content.append(dict(bssid=ele['bssid'], 
+            content.append(dict(bssid=ele['bssid'],
                                 state=selected,
                                 ssid=ele['ssid'],
                                 quality=ele['quality']))
@@ -858,33 +872,66 @@ class WiFiManager(object):
         # redirect to '/configure'
         return redirect('/configure')
 
+    @staticmethod
+    def path_exists(path):
+        try:
+            _ = os.stat(path)
+            return True
+        except OSError:
+            return False
+
+    def _response_for_file(self, filename: str, allow_gz: bool = False) -> Response:
+        """
+        Return the Response object for a static file.
+        Static files are either served from the /lib/static/<filetype> directory,
+        or from pre-compiled strings using pkg_resources in the 'static' namespace.
+        Assumes static files are separated into directories based on their extension.
+
+        :param      filename:  The filename
+        :type       filename:  str
+
+        :param      allow_gz:  Whether to allow gzipped files to be served.
+        :type       allow_gz:  bool
+
+        :returns:   The response for the file.
+        :rtype:     Response
+        """
+        if '..' in filename:
+            return Response(body='Not found', status_code=404, headers={}, reason='Directory traversal is not allowed')
+
+        # split the filename into parts, and get the extension
+        ext = filename.split('.')[-1]
+        # get the content-type for the extension
+        content_type = Response.types_map.get(ext, 'application/octet-stream')
+        headers = {}
+        headers['Content-Type'] = content_type
+        headers['Cache-Control'] = 'max-age=86400'
+        static_path = f"/lib/static/{ext}/{filename}"
+        if allow_gz:
+            zipped = static_path + '.gz'
+            if self.path_exists(zipped):
+                headers['Content-Encoding'] = 'gzip'
+                return Response(body = open(zipped, 'rb'), status_code=200, headers=headers)
+        elif self.path_exists(static_path):
+            return Response(body = open(static_path, 'rb'), status_code=200, headers=headers)
+        try:
+            f = pkg_resources.resource_stream('static', f"{ext}/{filename}")
+            return Response(body = f, status_code=200, headers=headers)
+        except KeyError:
+            return Response(body='File not found', status_code=404)
+
     # @app.route('/static/<path:path>')
     async def serve_static(self,
                            req: Request,
                            path: str) -> Union[str,
                                                Tuple[str, int],
                                                Tuple[str, int, dict]]:
-        if '..' in path:
-            # directory traversal is not allowed
-            return 'Not found', 404
-
-        response_header = {
-            'Cache-Control': 'max-age=86400',
-        }
-
-        ext = path.split('.')[-1]
-        complete_file_path = '/lib/' + 'static/' + ext + '/' + path
-
-        if 'gzip' in req.headers.get('Accept-Encoding', ''):
-            self.logger.debug('gzip accepted for {} file'.format(ext))
-            complete_file_path += '.gz'
-            response_header['Content-Encoding'] = 'gzip'
-
-        return self._send_static_file(filename=complete_file_path, status_code=200, response_header=response_header)
+        allow_gz = 'gzip' in req.headers.get('Accept-Encoding', '')
+        return self._response_for_file(path, allow_gz=allow_gz)
 
     # @app.route('/favicon.ico')
     async def serve_favicon(self, req: Request) -> None:
-        return self._send_static_file(filename='/lib/static/favicon.ico', status_code=200, content_type='image/x-icon')
+        return self._response_for_file('favicon.ico')
 
     # @app.route('/shutdown')
     async def shutdown(self, req: Request) -> None:
@@ -893,44 +940,16 @@ class WiFiManager(object):
 
         return 'The server is shutting down...'
 
-    async def _send_static_file(self, filename:str, status_code:int, content_type:str = None, response_header:dict|None = {}) -> None:
-        # if no content type is specified, try to guess it from the filename's extension
-        if not 'Content-Type' in response_header:
-            if content_type is None:
-                ext = filename.split('.')[-1]
-                content_type = Response.types_map.get(ext, 'application/octet-stream')
-            response_header['Content-Type'] = content_type
-
-        # if the named file exists, return it directly.
-        if PathHelper.exists(path=filename):
-            f = open(filename, 'rb')
-            self.logger.debug('Send file {}'.format(filename))
-            self.logger.debug('Response header {}'.format(response_header))
-            return Response(body=f, status_code=status_code, headers=response_header)
-
-        # if the named file does not exist, try to find it in the pre-compiled static module
-        # using pkg_resources
-        # First, strip off the leading /lib/ from the filename if there is one
-        if filename.startswith('/lib/'):
-            fname = filename[5:]
-        elif filename.startswith('/'):
-            fname = filename[1:]
-        # Now, split off the next file component
-        dirname, fname = fname.split('/', 1)
-        # Then, try to find the file in the static module
-        try:
-            f = pkg_resources.resource_stream(dirname, fname)
-            self.logger.debug('Send compiled resource {}/{}'.format(dirname, fname))
-            self.logger.debug('Response header {}'.format(response_header))
-            return Response(body=f, status_code=status_code, headers=response_header)
-        except:
-            # if the file is not found, return a 404 error
-            errmsg = 'File not found: {}'.format(filename)
-            self.logger.error(errmsg)
-            return Response(body={'error': errmsg}, status_code=404)
-
     async def not_found(self, req: Request) -> None:
         return {'error': 'resource not found'}, 404
+
+
+    async def main(self, host, port, debug):
+        set_global_exception()  # set exception handler for debugging
+        server_task = asyncio.create_task(self.app.start_server(host=host, port=port, debug=debug))
+        repl_task = asyncio.create_task(aiorepl.task())
+        await asyncio.gather(server_task, repl_task)
+
 
     def run(self,
             host: str = '0.0.0.0',
@@ -947,14 +966,23 @@ class WiFiManager(object):
                             show debugger content
         :type       debug:  bool, optional
         """
-        self.logger.debug('Run app on {}:{} with debug: {}'.format(host,
+        self.logger.info('Run app on {}:{} with debug: {}'.format(host,
                                                                    port,
                                                                    debug))
+        def before_request(req: Request) -> None:
+            gc.collect()
+            gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
+            free = gc.mem_free()
+            self.logger.info(f"Before request: {req.url}, free mem: {free}")
+
         try:
             # self.app.run()
             # self.app.run(debug=debug)
-            self.app.run(host=host, port=port, debug=debug)
+            # self.app.run(host=host, port=port, debug=debug)
+            self.logger.debug("Hooking before_request")
+            self.app.before_request(before_request)
+            asyncio.run(self.main(host=host, port=port, debug=debug))
         except KeyboardInterrupt:
-            self.logger.debug('Catched KeyboardInterrupt at run of web app')
+            self.logger.debug('Caught KeyboardInterrupt during run of web app')
         except Exception as e:
             self.logger.warning(e)
