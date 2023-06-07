@@ -10,19 +10,11 @@ import gc
 import network
 import time
 
-# custom packages
-from be_helpers.led_helper import Led
-
-
 # set clock speed to 240MHz instead of default 160MHz
 # machine.freq(240000000)
 
 # disable ESP os debug output
 esp.osdebug(None)
-
-led = Led()
-led.flash(amount=3, delay_ms=50)
-led.turn_on()
 
 station = network.WLAN(network.STA_IF)
 if station.active() and station.isconnected():
@@ -31,8 +23,6 @@ if station.active() and station.isconnected():
 station.active(False)
 time.sleep(1)
 station.active(True)
-
-led.turn_off()
 
 # run garbage collector at the end to clean up
 gc.collect()
