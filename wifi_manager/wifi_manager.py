@@ -667,9 +667,9 @@ class WiFiManager(object):
             selected = ''
             if ele['bssid'].decode('ascii') == selected_bssid:
                 selected = "checked"
-            content.append(dict(bssid=ele['bssid'],
+            content.append(dict(bssid=ele['bssid'].decode('ascii'),
                                 state=selected,
-                                ssid=ele['ssid'],
+                                ssid=ele['ssid'].decode('ascii'),
                                 quality=ele['quality']))
         return content
 
