@@ -24,10 +24,6 @@ import time
 import ubinascii
 import ucryptolib
 import pkg_resources
-<<<<<<< HEAD
-=======
-import aiorepl
->>>>>>> 42af61f (Render network list using included template rather than string appending.)
 import uasyncio as asyncio
 import os
 
@@ -50,11 +46,7 @@ from be_helpers.typing import List, Tuple, Union, Callable
 def set_global_exception():
     def handle_exception(loop, context):
         import sys
-<<<<<<< HEAD
         sys.print_exception(context["exception"], sys.stderr)
-=======
-        sys.print_exception(context["exception"])
->>>>>>> 42af61f (Render network list using included template rather than string appending.)
         sys.exit()
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
@@ -255,7 +247,7 @@ class WiFiManager(object):
 
         return result
 
-    def start_config(self) -> None:
+    def start_config(self, captive: bool = False) -> None:
         """Start WiFi manager accesspoint and webserver."""
         ap_name = 'WiFiManager_{}'.format(
             GenericHelper.get_uuid(-4).decode('ascii'))
@@ -265,7 +257,7 @@ class WiFiManager(object):
                                    password='',
                                    channel=11,
                                    timeout=5)
-        self.logger.debug('Created AP: {}'.format(result))
+        self.logger.info('Created AP: {}'.format(result))
         ifconfig = self.wh.ifconfig_ap
         self.logger.debug(ifconfig)
 
@@ -273,17 +265,19 @@ class WiFiManager(object):
         self.scanning = True
 
         # finally
-        self.run(host=ifconfig.ip, port=80, debug=True)
+        self.run(host=ifconfig.ip, port=80, debug=True, captive=captive)
 
-        self.logger.debug('Finished running the Webserver application')
+        self.logger.info('Finished running the Webserver application')
         self.scanning = False
         self.logger.debug('Stopped scanning thread')
 
         # wait some time to end all threads savely
         time.sleep(5)
 
+        # clean up
+        self.background_tasks = None
         gc.collect()
-        self.logger.debug('Goodbye from WiFiManager')
+        self.logger.info('Goodbye from WiFiManager')
 
     def add_url_rule(self,
                      url: str,
@@ -958,12 +952,12 @@ class WiFiManager(object):
     async def not_found(self, req: Request) -> None:
         return {'error': 'resource not found'}, 404
 
-    async def main(self, host, port, debug):
+    async def main(self, host, port, debug, captive):
+        self.background_tasks = set()
         set_global_exception()  # set exception handler for debugging
         server_task = asyncio.create_task(self.app.start_server(host=host,
                                                                 port=port,
                                                                 debug=debug))
-<<<<<<< HEAD
         tasks = [server_task]
 
         try:
@@ -974,15 +968,12 @@ class WiFiManager(object):
             pass
 
         await asyncio.gather(*tasks)
-=======
-        repl_task = asyncio.create_task(aiorepl.task())
-        await asyncio.gather(server_task, repl_task)
->>>>>>> 42af61f (Render network list using included template rather than string appending.)
 
     def run(self,
             host: str = '0.0.0.0',
             port: int = 80,
-            debug: bool = False) -> None:
+            debug: bool = False,
+            captive: bool = False) -> None:
         """
         Run the web application
 
@@ -993,19 +984,15 @@ class WiFiManager(object):
         :param      debug:  Flag to automatically reload for code changes and
                             show debugger content
         :type       debug:  bool, optional
+        :param      captive:  If true, also run captive portal
+        :type       captive:  bool, optional
         """
-        self.logger.info('Run app on {}:{} with debug: {}'.format(host,
-                                                                  port,
-                                                                  debug))
+        self.logger.info('Run app on {}:{} with debug: {} captive: {}'.
+                         format(host, port, debug, captive))
 
         def before_request(req: Request) -> None:
             gc.collect()
             gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
-<<<<<<< HEAD
-=======
-            free = gc.mem_free()
-            self.logger.info(f"Before request: {req.url}, free mem: {free}")
->>>>>>> 42af61f (Render network list using included template rather than string appending.)
 
         try:
             # self.app.run()
@@ -1013,8 +1000,9 @@ class WiFiManager(object):
             # self.app.run(host=host, port=port, debug=debug)
             self.logger.debug("Hooking before_request")
             self.app.before_request(before_request)
-            asyncio.run(self.main(host=host, port=port, debug=debug))
+            asyncio.run(self.main(host=host, port=port, debug=debug,
+                                  captive=captive))
         except KeyboardInterrupt:
-            self.logger.debug('Caught KeyboardInterrupt during run of web app')
+            self.logger.info('Caught KeyboardInterrupt during run of web app')
         except Exception as e:
             self.logger.warning(e)

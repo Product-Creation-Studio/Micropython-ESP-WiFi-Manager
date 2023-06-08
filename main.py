@@ -18,7 +18,7 @@ print('Connection result: {}'.format(result))
 
 if result is False:
     print('Starting config server')
-    wm.start_config()
+    wm.start_config(captive=True)
 else:
     print('Successfully connected to a network :)')
 
