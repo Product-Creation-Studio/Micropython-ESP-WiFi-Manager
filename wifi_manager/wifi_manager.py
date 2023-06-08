@@ -10,9 +10,9 @@ In case no network has been configured or no connection could be established
 to any of the configured networks within the timeout of each 5 seconds an
 AccessPoint is created.
 
-A simple Microdot webserver is hosting the webpages to connect to new networks,
+A simple Microdot webserver hosts the webpages to connect to new networks,
 to remove already configured networks from the list of connections to
-establish and to get the latest available networks as JSON
+establish and to get the latest available networks as HTML or JSON.
 """
 
 # system packages
@@ -30,11 +30,10 @@ import os
 
 # pip installed packages
 # https://github.com/miguelgrinberg/microdot
-from microdot.microdot_asyncio import Microdot, redirect, Request, Response, \
-    send_file
+from microdot.microdot_asyncio import Microdot, redirect, Request, Response
 from microdot import URLPattern
 from microdot.microdot_utemplate import render_template, init_templates
-from utemplate import compiled, recompile 
+from utemplate import compiled, recompile
 
 # custom packages
 from be_helpers.generic_helper import GenericHelper
@@ -44,6 +43,7 @@ from be_helpers.wifi_helper import WifiHelper
 # typing not natively supported on micropython
 from be_helpers.typing import List, Tuple, Union, Callable
 
+
 def set_global_exception():
     def handle_exception(loop, context):
         import sys
@@ -51,6 +51,7 @@ def set_global_exception():
         sys.exit()
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
+
 
 def path_exists(path):
     try:
@@ -86,10 +87,13 @@ class WiFiManager(object):
 
         # Check for existence of lib/templates
         if path_exists('/lib/templates/'):
-            init_templates(template_dir='lib/templates', loader_class=recompile.Loader)
+            init_templates(template_dir='lib/templates',
+                           loader_class=recompile.Loader)
         else:
-            self.logger.warning('Missing directory lib/templates; using pre-compiled')
-            init_templates(template_dir='templates', loader_class=compiled.Loader)
+            self.logger.warning(
+                'Missing directory lib/templates; using pre-compiled')
+            init_templates(template_dir='templates',
+                           loader_class=compiled.Loader)
 
         self.wh = WifiHelper()
 
@@ -878,12 +882,15 @@ class WiFiManager(object):
         # redirect to '/configure'
         return redirect('/configure')
 
-    def _response_for_file(self, filename: str, allow_gz: bool = False) -> Response:
+    def _response_for_file(self, filename: str,
+                           allow_gz: bool = False) -> Response:
         """
         Return the Response object for a static file.
-        Static files are either served from the /lib/static/<filetype> directory,
-        or from pre-compiled strings using pkg_resources in the 'static' namespace.
-        Assumes static files are separated into directories based on their extension.
+        Static files are either served from the
+        /lib/static/<filetype> directory, or from pre-compiled strings
+        using pkg_resources in the 'static' namespace.
+        Assumes static files are separated into directories based on
+        their extension.
 
         :param      filename:  The filename
         :type       filename:  str
@@ -895,7 +902,8 @@ class WiFiManager(object):
         :rtype:     Response
         """
         if '..' in filename:
-            return Response(body='Not found', status_code=404, headers={}, reason='Directory traversal is not allowed')
+            return Response(body='Not found', status_code=404, headers={},
+                            reason='Directory traversal is not allowed')
 
         # split the filename into parts, and get the extension
         ext = filename.split('.')[-1]
@@ -909,12 +917,14 @@ class WiFiManager(object):
             zipped = static_path + '.gz'
             if path_exists(zipped):
                 headers['Content-Encoding'] = 'gzip'
-                return Response(body = open(zipped, 'rb'), status_code=200, headers=headers)
+                return Response(body=open(zipped, 'rb'), status_code=200,
+                                headers=headers)
         elif path_exists(static_path):
-            return Response(body = open(static_path, 'rb'), status_code=200, headers=headers)
+            return Response(body=open(static_path, 'rb'), status_code=200,
+                            headers=headers)
         try:
             f = pkg_resources.resource_stream('static', f"{ext}/{filename}")
-            return Response(body = f, status_code=200, headers=headers)
+            return Response(body=f, status_code=200, headers=headers)
         except KeyError:
             return Response(body='File not found', status_code=404)
 
@@ -941,13 +951,13 @@ class WiFiManager(object):
     async def not_found(self, req: Request) -> None:
         return {'error': 'resource not found'}, 404
 
-
     async def main(self, host, port, debug):
         set_global_exception()  # set exception handler for debugging
-        server_task = asyncio.create_task(self.app.start_server(host=host, port=port, debug=debug))
+        server_task = asyncio.create_task(self.app.start_server(host=host,
+                                                                port=port,
+                                                                debug=debug))
         repl_task = asyncio.create_task(aiorepl.task())
         await asyncio.gather(server_task, repl_task)
-
 
     def run(self,
             host: str = '0.0.0.0',
@@ -965,8 +975,9 @@ class WiFiManager(object):
         :type       debug:  bool, optional
         """
         self.logger.info('Run app on {}:{} with debug: {}'.format(host,
-                                                                   port,
-                                                                   debug))
+                                                                  port,
+                                                                  debug))
+
         def before_request(req: Request) -> None:
             gc.collect()
             gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
