@@ -26,7 +26,7 @@ import ucryptolib
 import pkg_resources
 import uasyncio as asyncio
 import os
-from .captive_portal import captive_portal
+from wifi_manager.captive_portal import captive_portal
 
 # pip installed packages
 # https://github.com/miguelgrinberg/microdot
@@ -968,7 +968,7 @@ class WiFiManager(object):
             pass
 
         if captive:
-            captive_task = asyncio.create_task(captive_portal())
+            captive_task = asyncio.create_task(captive_portal(self))
             self.background_tasks.add(captive_task)
 
         await asyncio.gather(*self.background_tasks)

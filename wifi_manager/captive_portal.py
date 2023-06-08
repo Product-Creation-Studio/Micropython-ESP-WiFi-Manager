@@ -1,8 +1,7 @@
 import network
 import socket
 import uasyncio as asyncio
-from .wifi_manager import WifiManager
-from microdot_asyncio import Response, render_template, redirect
+from microdot.microdot_asyncio import redirect
 
 DOMAIN = None
 LOGGER = None
@@ -42,15 +41,19 @@ def _hotspot_detect(request):
     return redirect(f"http://{DOMAIN}/", 302)
 
 
-def _install_captive_portal_routes(wm: WifiManager):
+def _install_captive_portal_routes(wm):
     wm.add_url_rule(url="/ncsi.txt", func=_ncsi_txt)
     wm.add_url_rule(url="/connecttest.txt", func=_connecttest_txt)
     wm.add_url_rule(url="/redirect", func=_redirect)
     wm.add_url_rule(url="/generate_204", func=_generate_204)
     wm.add_url_rule(url="/hotspot-detect.html", func=_hotspot_detect)
 
+async def async_recvfrom(sock, count):
+    yield asyncio.core._io_queue.queue_read(sock)
+    return sock.recvfrom(count)
 
-async def captive_portal(wm: WifiManager):
+
+async def captive_portal(wm):
     _install_captive_portal_routes(wm)
     global DOMAIN, LOGGER
     ap = network.WLAN(network.AP_IF)
@@ -63,14 +66,19 @@ async def captive_portal(wm: WifiManager):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(socket.getaddrinfo(myip, 53)[0][-1])
     while True:
-        yield asyncio.IORead(s)
-        packet, addr = s.recvfrom(256)
+        plen = 0
+        try:
+            packet, addr = await asyncio.wait_for(async_recvfrom(s, 256), 1)
+            plen = len(packet)
+            LOGGER.info(f"DNS request {plen} bytes from {addr}")
+        except asyncio.TimeoutError:
+            continue
+
         # verify query, opcode 0, one question
         if (
             packet[2] & 0xF0 == 0x00 and  # query + opcode 0
             packet[4:6] == b"\x00\x01"  # one question
         ):
-            plen = len(packet)
             response = bytearray(plen + 16)
             # change request into a response and append the answer
             response[:plen] = packet
