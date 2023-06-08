@@ -24,6 +24,10 @@ import time
 import ubinascii
 import ucryptolib
 import pkg_resources
+<<<<<<< HEAD
+=======
+import aiorepl
+>>>>>>> 42af61f (Render network list using included template rather than string appending.)
 import uasyncio as asyncio
 import os
 
@@ -46,7 +50,11 @@ from be_helpers.typing import List, Tuple, Union, Callable
 def set_global_exception():
     def handle_exception(loop, context):
         import sys
+<<<<<<< HEAD
         sys.print_exception(context["exception"], sys.stderr)
+=======
+        sys.print_exception(context["exception"])
+>>>>>>> 42af61f (Render network list using included template rather than string appending.)
         sys.exit()
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
@@ -955,6 +963,7 @@ class WiFiManager(object):
         server_task = asyncio.create_task(self.app.start_server(host=host,
                                                                 port=port,
                                                                 debug=debug))
+<<<<<<< HEAD
         tasks = [server_task]
 
         try:
@@ -965,6 +974,10 @@ class WiFiManager(object):
             pass
 
         await asyncio.gather(*tasks)
+=======
+        repl_task = asyncio.create_task(aiorepl.task())
+        await asyncio.gather(server_task, repl_task)
+>>>>>>> 42af61f (Render network list using included template rather than string appending.)
 
     def run(self,
             host: str = '0.0.0.0',
@@ -988,6 +1001,11 @@ class WiFiManager(object):
         def before_request(req: Request) -> None:
             gc.collect()
             gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
+<<<<<<< HEAD
+=======
+            free = gc.mem_free()
+            self.logger.info(f"Before request: {req.url}, free mem: {free}")
+>>>>>>> 42af61f (Render network list using included template rather than string appending.)
 
         try:
             # self.app.run()

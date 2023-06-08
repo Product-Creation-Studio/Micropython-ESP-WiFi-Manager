@@ -9,6 +9,14 @@ import gc
 import network
 from time import sleep
 
+<<<<<<< HEAD
+=======
+# set clock speed to 240MHz instead of default 160MHz
+# machine.freq(240000000)
+
+# disable ESP os debug output
+esp.osdebug(None)
+>>>>>>> 42af61f (Render network list using included template rather than string appending.)
 
 station = network.WLAN(network.STA_IF)
 if station.active() and station.isconnected():
