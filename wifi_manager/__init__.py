@@ -2,5 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 from .wifi_manager import WiFiManager
+from .captive_portal import captive_portal
 
 from .version import __version__

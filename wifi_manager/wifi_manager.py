@@ -26,6 +26,7 @@ import ucryptolib
 import pkg_resources
 import uasyncio as asyncio
 import os
+from .captive_portal import captive_portal
 
 # pip installed packages
 # https://github.com/miguelgrinberg/microdot
@@ -953,21 +954,24 @@ class WiFiManager(object):
         return {'error': 'resource not found'}, 404
 
     async def main(self, host, port, debug, captive):
-        self.background_tasks = set()
         set_global_exception()  # set exception handler for debugging
         server_task = asyncio.create_task(self.app.start_server(host=host,
                                                                 port=port,
                                                                 debug=debug))
-        tasks = [server_task]
+        self.background_tasks = set(server_task)
 
         try:
             import aiorepl
             repl_task = asyncio.create_task(aiorepl.task())
-            tasks.append(repl_task)
+            self.background_tasks.add(repl_task)
         except ImportError:
             pass
 
-        await asyncio.gather(*tasks)
+        if captive:
+            captive_task = asyncio.create_task(captive_portal())
+            self.background_tasks.add(captive_task)
+
+        await asyncio.gather(*self.background_tasks)
 
     def run(self,
             host: str = '0.0.0.0',

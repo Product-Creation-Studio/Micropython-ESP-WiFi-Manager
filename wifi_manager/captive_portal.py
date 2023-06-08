@@ -67,21 +67,21 @@ async def captive_portal(wm: WifiManager):
         packet, addr = s.recvfrom(256)
         # verify query, opcode 0, one question
         if (
-            packet[2] & 0xF0 == 0x00    # query + opcode 0
-            and packet[4:6] == b"\x00\x01"  # one question
+            packet[2] & 0xF0 == 0x00 and  # query + opcode 0
+            packet[4:6] == b"\x00\x01"  # one question
         ):
-            packet_len = len(packet)
-            response = bytearray(packet_len + 16)
+            plen = len(packet)
+            response = bytearray(plen + 16)
             # change request into a response and append the answer
-            response[:packet_len] = packet
+            response[:plen] = packet
             response[2] |= 0x80  # change from query to response
             response[3] = 0  # recursion not available and responsecode stays 0
             response[7] = 1  # number of answers
             # add 16 bytes of answer
-            response[packet_len:packet_len+2] = b"\xc0\x0c"  # point back to question
-            response[packet_len+2:packet_len+4] = b"\x00\x01"  # A entry
-            response[packet_len+4:packet_len+6] = b"\x00\x01"  # class IN
-            response[packet_len+6:packet_len+10] = b"\x00\x00\x00\x00"  # TTL 0
-            response[packet_len+10:packet_len+12] = b"\x00\x04"  # length of address
-            response[packet_len+12:packet_len+16] = myip_bytes  # address
+            response[plen: plen + 2] = b"\xc0\x0c"  # point back to question
+            response[plen + 2: plen + 4] = b"\x00\x01"  # A entry
+            response[plen + 4: plen + 6] = b"\x00\x01"  # class IN
+            response[plen + 6: plen + 10] = b"\x00\x00\x00\x00"  # TTL 0
+            response[plen + 10: plen + 12] = b"\x00\x04"  # length of address
+            response[plen + 12: plen + 16] = myip_bytes  # address
             s.sendto(response, addr)
