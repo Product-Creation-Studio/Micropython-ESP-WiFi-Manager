@@ -70,7 +70,6 @@ async def captive_portal(wm):
         try:
             packet, addr = await asyncio.wait_for(async_recvfrom(s, 256), 1)
             plen = len(packet)
-            LOGGER.info(f"DNS request {plen} bytes from {addr}")
         except asyncio.TimeoutError:
             continue
 
