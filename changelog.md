@@ -18,6 +18,10 @@ r"^\#\# \[\d{1,}[.]\d{1,}[.]\d{1,}\] \- \d{4}\-\d{2}-\d{2}$"
 -->
 
 <!-- ## [Unreleased] -->
+## Unreleased
+## [1.14.0] - 2023-06-13
+### Added
+- Added DNS server to allow creation of a captive portal
 
 ## Released
 ## [1.13.0] - 2023-06-12
