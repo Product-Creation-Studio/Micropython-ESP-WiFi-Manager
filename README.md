@@ -106,7 +106,6 @@ upip.install('micropython-esp-wifi-manager')
 # dependencies will be installed automatically
 ```
 
-<<<<<<< HEAD
 #### Hook the WiFi Manager boot logic
 
 The `boot.py` and `main.py` files of this package are installed into `/lib` of
@@ -122,21 +121,6 @@ And also add this line to your `main.py`, before your application code
 
 ```python
 from wifi_manager import main
-=======
-#### Hook the WiFi Manager logic into `/boot.py` and `/main.py`
-
-Because the `mip` installation will not install files outside of `/lib`, to run the WiFi Manager at startup,
-add this line to your `/boot.py`:
-
-```python
-import wifi_manager.boot
-```
-
-And also add this line to your `/main.py`, before your application code:
-
-```python
-import wifi_manager.main
->>>>>>> df016da (Add boot.py and main.py under lib/wifi_manager.)
 ```
 
 #### Specific version
