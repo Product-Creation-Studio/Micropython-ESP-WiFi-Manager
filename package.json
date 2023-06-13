@@ -26,27 +26,27 @@
         ],
         [
             "microdot/microdot.py",
-            "github:brainelectronics/Micropython-ESP-WiFi-Manager/microdot/microdot.py"
+            "github:miguelgrinberg/microdot/src/microdot.py"
         ],
         [
             "microdot/microdot_asyncio.py",
-            "github:brainelectronics/Micropython-ESP-WiFi-Manager/microdot/microdot_asyncio.py"
+            "github:miguelgrinberg/microdot/src/microdot_asyncio.py"
         ],
         [
             "microdot/microdot_utemplate.py",
-            "github:brainelectronics/Micropython-ESP-WiFi-Manager/microdot/microdot_utemplate.py"
+            "github:miguelgrinberg/microdot/src/microdot_utemplate.py"
         ],
         [
             "utemplate/compiled.py",
-            "utemplate/compiled.py"
+            "github:pfalcon/utemplate/utemplate/compiled.py"
         ],
         [
             "utemplate/recompile.py",
-            "utemplate/recompile.py"
+            "github:pfalcon/utemplate/utemplate/recompile.py"
         ],
         [
             "utemplate/source.py",
-            "utemplate/source.py"
+            "github:pfalcon/utemplate/utemplate/source.py"
         ],
         [
             "static/css/bootstrap.min.css",
